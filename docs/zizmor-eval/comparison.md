@@ -6,15 +6,26 @@
 | Runs zizmor via | `uvx zizmor` (native) | **Docker image** (needs container runtime) |
 | Maintained by | us, once forked into `G-Research/shared-workflows` | upstream |
 
-## The findings are equal
+## The findings are equal — proven on a live run
 
-Both shell out to the *same zizmor binary* with the same `--min-severity` /
-`--min-confidence` / `--config`. Same version → identical SARIF.
+Both shell out to the *same zizmor binary*, so the output is the same. We ran
+both on real PRs against this fork ([#2](https://github.com/david-wagih/consuldotnet/pull/2)
+= A, [#3](https://github.com/david-wagih/consuldotnet/pull/3) = B) and compared
+the uploaded SARIF. **27 results each, byte-for-byte the same `(rule, file,
+line)` set — even though A ran zizmor `1.24.1` and B ran `1.25.2`:**
 
-```
-zizmor 1.25.2 on .github/workflows/  (min-severity low, min-confidence low)
-  → 86 findings: 18 medium, 8 high   (3 ignored, 57 suppressed)
-```
+| Rule | A (Grafana, v1.24.1) | B (zizmor-action, v1.25.2) |
+|---|---:|---:|
+| `excessive-permissions` | 12 | 12 |
+| `artipacked` | 8 | 8 |
+| `template-injection` | 4 | 4 |
+| `dangerous-triggers` | 2 | 2 |
+| `dependabot-cooldown` | 1 | 1 |
+| **TOTAL (SARIF results)** | **27** | **27** |
+
+`only-in-A: []`, `only-in-B: []`. (A's logs also print `123 findings` — that's
+the raw plain-text count; `123 − 93 suppressed − 3 ignored = 27` SARIF results.
+CI runs online audits, so counts are higher than a local `--offline` run.)
 
 So "better output" is the wrong axis. Decide on **what each does with the
 output**.
@@ -46,6 +57,30 @@ output**.
 3. **Cost to adopt.** B is ~10 lines, upstream-maintained. A only pays off after
    you fork it into `G-Research/shared-workflows` and rewire every `grafana` →
    `G-Research` reference (2 OIDC fallbacks, org gates, the validator).
+
+## Adaptation costs found while testing A on this fork
+
+Running A on consuldotnet surfaced **three** breakages that don't show up in
+Grafana's own setup — concrete evidence of the "ADAPT, don't lift" cost. B
+(zizmor-action) needed **zero** fixes and passed on the first run.
+
+1. **`github` context in a `workflow_call` input default.** The `github-token`
+   input defaulted to `${{ github.token }}`, which GitHub rejects in a reusable
+   workflow's input defaults → `startup_failure`. Fixed by defaulting to `""`
+   (consumers already fall back to `${{ inputs.github-token || github.token }}`).
+2. **`delete-vulnerable-branch` startup_failure.** That job declares
+   `contents: write`; GitHub validates a reusable workflow's declared job
+   permissions at startup *even for jobs that `if:`-skip*, so a caller granting
+   only `contents: read` gets a hard `startup_failure`. Fixed by trimming to the
+   `job-workflow-ref` + `analysis` minimal slice (also drops the Prometheus job).
+3. **Missing central config crash.** The "Set up Zizmor configuration" step
+   passed `--config <temp>/zizmor.yml` whenever a ref SHA existed, without
+   checking the file downloaded. Grafana's repo always ships `.github/zizmor.yml`
+   so it never 404s; consuldotnet has none → fetch 404 → `--config` points at a
+   missing file → `zizmor` errors out. Fixed with a `[ -f ... ]` guard so it
+   falls back to zizmor's default config.
+
+Net: **A needed 3 fixes to run on a non-Grafana repo; B needed 0.**
 
 ## Recommendation
 
