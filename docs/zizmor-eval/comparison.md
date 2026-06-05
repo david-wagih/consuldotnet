@@ -47,6 +47,25 @@ output**.
    you fork it into `G-Research/shared-workflows` and rewire every `grafana` →
    `G-Research` reference (2 OIDC fallbacks, org gates, the validator).
 
+## Adaptation costs found while testing A on this fork
+
+Running A on consuldotnet surfaced two breakages that don't show up in
+Grafana's own setup — concrete evidence of the "ADAPT, don't lift" cost:
+
+1. **`delete-vulnerable-branch` startup_failure.** That job declares
+   `contents: write`; GitHub validates a reusable workflow's declared job
+   permissions at startup *even for jobs that `if:`-skip*, so a caller granting
+   only `contents: read` gets a hard `startup_failure`. Fixed by trimming to the
+   `job-workflow-ref` + `analysis` minimal slice (also drops the Prometheus job).
+2. **Missing central config crash.** The "Set up Zizmor configuration" step
+   passed `--config <temp>/zizmor.yml` whenever a ref SHA existed, without
+   checking the file downloaded. Grafana's repo always ships `.github/zizmor.yml`
+   so it never 404s; consuldotnet has none → fetch 404 → `--config` points at a
+   missing file → `zizmor` errors out. Fixed with a `[ -f ... ]` guard so it
+   falls back to zizmor's default config.
+
+B (zizmor-action) hit neither — it has no central-config machinery to adapt.
+
 ## Recommendation
 
 ```

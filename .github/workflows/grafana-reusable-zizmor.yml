@@ -379,7 +379,11 @@ jobs:
           fi
 
           ZIZMOR_CONFIG_PATH="${{ runner.temp }}/zizmor.yml"
-          if [ -n "${DEFAULT_ZIZMOR_CONFIG_DOWNLOADED}" ]; then
+          # Only pass --config if the central config was actually downloaded.
+          # Grafana's own repo always ships .github/zizmor.yml, so the fetch
+          # never 404s for them; on a repo without one, the file is absent and
+          # pointing --config at it makes zizmor error out. Guard on the file.
+          if [ -n "${DEFAULT_ZIZMOR_CONFIG_DOWNLOADED}" ] && [ -f "${ZIZMOR_CONFIG_PATH}" ]; then
             echo "zizmor-config=${ZIZMOR_CONFIG_PATH}" | tee -a "${GITHUB_OUTPUT}"
           fi
 
