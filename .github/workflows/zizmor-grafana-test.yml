@@ -26,4 +26,3 @@ jobs:
       min-severity: low
       min-confidence: low
       fail-severity: never # non-blocking during eval
-      send-bench-metrics: false # strip the Prometheus job

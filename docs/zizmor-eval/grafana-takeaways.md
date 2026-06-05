@@ -18,6 +18,13 @@ If we go with **option A**, this is what's worth keeping. Verdicts: **TAKE**
 
 ## Inputs (the reusable workflow)
 
+> The copy committed here (`.github/workflows/grafana-reusable-zizmor.yml`) is
+> already the **trimmed minimal slice**: only `job-workflow-ref` + `analysis`.
+> The `grafana-bench` (Prometheus) and `delete-vulnerable-branch` jobs — and
+> their `send-bench-metrics` / `auto-delete-*` inputs — were removed (the
+> `delete-vulnerable-branch` job's `contents: write` request also caused a
+> reusable-workflow startup_failure on a caller that only grants `contents: read`).
+
 | Input | Default | Note |
 |---|---|---|
 | `min-severity` | `low` | show findings ≥ this |
@@ -26,8 +33,6 @@ If we go with **option A**, this is what's worth keeping. Verdicts: **TAKE**
 | `runs-on` | `ubuntu-latest` | |
 | `always-use-default-config` | `false` | ignore repo-local config when `true` |
 | `extra-args` | `""` | passthrough, e.g. `--offline`, `--persona auditor` |
-| `send-bench-metrics` | `true` | **set `false`** to skip Prometheus job |
-| `auto-delete-dangerous-branches` | `false` | leave off |
 
 ## OSS gotchas we inherit
 
