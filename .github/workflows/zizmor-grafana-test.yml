@@ -1,0 +1,29 @@
+name: zizmor test (A — Grafana reusable)
+
+# Eval caller for OPTION A: the Grafana reusable workflow, with the
+# Prometheus/Grafana-Bench job stripped (send-bench-metrics: false).
+# Non-blocking (fail-severity: never) so it never red-X's the eval PR.
+# See docs/zizmor-eval/ for the comparison.
+
+on:
+  pull_request:
+    paths:
+      - ".github/**"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  zizmor:
+    permissions:
+      actions: read
+      contents: read
+      id-token: write # OIDC central-config fetch (no-op on forks)
+      pull-requests: write # PR-comment fallback (no GHAS)
+      security-events: write # SARIF upload to Code Scanning
+    uses: ./.github/workflows/grafana-reusable-zizmor.yml
+    with:
+      min-severity: low
+      min-confidence: low
+      fail-severity: never # non-blocking during eval
+      send-bench-metrics: false # strip the Prometheus job
