@@ -30,6 +30,7 @@ rewiring** it for G-Research. Full reasoning in [comparison.md](comparison.md).
 
 | Doc | What it answers |
 |---|---|
+| [decision.md](decision.md) | **Pick by your requirements** — checklist, weighted scorecard, decision flow |
 | [comparison.md](comparison.md) | A vs B — the decision matrix and recommendation |
 | [grafana-takeaways.md](grafana-takeaways.md) | What's worth lifting from Grafana's workflow (TAKE / ADAPT / DROP) + inputs |
 | [zizmor-value.md](zizmor-value.md) | What zizmor actually catches on this repo (and what commit #632 did/didn't fix) |
