@@ -31,7 +31,10 @@ on:
         description: Use a different token to the default
         required: false
         type: string
-        default: ${{ github.token }}
+        # NOTE: workflow_call input defaults cannot use the `github` context
+        # (causes a startup_failure). Leave empty; consumers fall back to
+        # `${{ inputs.github-token || github.token }}`.
+        default: ""
 
       always-use-default-config:
         description: |
