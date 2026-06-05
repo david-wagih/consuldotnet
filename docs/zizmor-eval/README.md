@@ -12,8 +12,11 @@ on G-Research repos generally. Two options on the table:
 
 ## TL;DR
 
-Both wrap the **same zizmor binary → identical findings**. The choice is about
-the machinery *around* the findings, not the findings.
+Both wrap the **same zizmor binary → identical findings**. Proven on live runs:
+both uploaded the **same 27 SARIF results** (same rule/file/line set) despite A
+running zizmor `1.24.1` and B `1.25.2`. The choice is about the machinery
+*around* the findings, not the findings — and A needed **3 fixes** to run on a
+non-Grafana repo while B needed **0**.
 
 | You want… | Choose |
 |---|---|
