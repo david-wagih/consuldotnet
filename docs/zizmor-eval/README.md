@@ -103,6 +103,23 @@ Notes on the numbers:
   `master` (empty), so to see them, run on a branch ref (`workflow_dispatch`) or
   filter the page by branch.
 
+### Why neither PR posted findings as a PR comment
+
+- **A (Grafana)** *does* support a PR comment, but **only as a fallback** when the
+  SARIF→Code Scanning upload fails — the step is gated on
+  `steps.upload-sarif.outcome == 'failure'`. On a **public repo with Code Scanning**
+  the upload succeeds, so the fallback comment is intentionally skipped. You'd see
+  it on a **private repo without Advanced Security** (where the upload fails).
+- **B (zizmor-action)** has **no PR-comment feature** at all. Its only surfaces are
+  SARIF→Code Scanning (`advanced-security`) or GitHub annotations (`annotations`,
+  ≤10, mutually exclusive with SARIF upload).
+- Code Scanning's **inline PR annotations** (both options) only render for findings
+  on lines **in the PR diff**; these eval PRs don't modify the flagged workflow
+  files, so nothing appears inline either.
+
+This is another point for **A** if PR-visible output without Advanced Security
+matters to you (e.g. private G-Research repos).
+
 **Conclusion: "better output" is the wrong axis — decide on what each does *with*
 the output.**
 
