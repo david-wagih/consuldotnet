@@ -51,27 +51,39 @@ Both were run on real PRs against the fork: **PR #2** (A) and **PR #3** (B).
 
 ## 2. Why zizmor at all — what it catches
 
-zizmor checks six+ classes of GitHub Actions risk. A prior look at consuldotnet's
-own history makes the case: commit **#632** ("pin GitHub Actions to commit SHAs")
-fixed **1 of 6** categories — completely, but only one.
+zizmor checks several classes of GitHub Actions risk. consuldotnet's own history
+makes the case: commit **#632** ("pin GitHub Actions to commit SHAs") fixed the
+`unpinned-uses` class **completely** — but that's only one class.
+
+Reproducible offline run (zizmor 1.25.2, `--min-severity low --min-confidence low`,
+scope `.github/workflows/`), comparing the two commits:
 
 ```
-findings:  116  ───────────►  67     (after #632 pinning)
-high:       44  ───────────►   4
+                 baseline b16bd3f   →   after #632 (12b1da4)
+total findings        116           →        80
+high severity          44           →         8
+unpinned-uses          36 (all high)→         0   ✅ eliminated
 ```
 
-| Category | Severity | Fixed by #632? |
-|---|:---:|:---:|
-| `unpinned-uses` | 🔴 High | ✅ fully (all 44 high) |
-| `dangerous-triggers` | 🔴 High | ❌ |
-| `template-injection` | 🔴 High | ❌ |
-| `excessive-permissions` | 🟡 Medium | ❌ |
-| `cache-poisoning` | 🟡 Medium | ❌ |
-| `artipacked` | ⚪ Low | ❌ |
+The arithmetic is self-consistent: all **36** `unpinned-uses` findings were high,
+so removing them drops high `44 → 8` and total `116 → 80`. Pinning fixed that one
+class entirely and touched nothing else.
 
-The remaining findings (dangerous triggers, template injection, excessive
-permissions, …) need design decisions, not a mechanical rewrite — which is the
-ongoing value of running zizmor in CI, whichever wrapper.
+| Category still present after #632 | Severity |
+|---|:---:|
+| `dangerous-triggers` (`pull_request_target`, `workflow_run`) | 🔴 High |
+| `template-injection` (`${{ … }}` in `run:`) | 🔴 High |
+| `excessive-permissions` | 🟡 Medium |
+| `artipacked` | ⚪ Low |
+
+The remaining ~80 findings need design decisions (changing triggers, scoping
+tokens), not a mechanical rewrite — which is the ongoing value of running zizmor
+in CI, whichever wrapper.
+
+> Reproduce: `git archive b16bd3f .github/workflows | tar -x -C /tmp/base` (and
+> `12b1da4` → `/tmp/fix`), then run the command above in each. Exact totals depend
+> on the zizmor version and `--offline` vs online; the directional result
+> (`unpinned-uses` fully fixed, the rest untouched) is stable.
 
 ---
 
@@ -188,15 +200,21 @@ Grafana's own setup — concrete evidence of the "ADAPT, don't lift" cost. B nee
 ## 6. Version ↔ commit-SHA validation (uses `GH_TOKEN`)
 
 **Question:** how does zizmor validate that a pinned commit SHA matches its claimed
-version, and does it use a GitHub token? **Answer: yes** — zizmor uses the GitHub
-API (via `GH_TOKEN`) to resolve a tag/version to its real SHA and check it against
-your pin. Three **online** (token-required) audits do this:
+version, and does it use a GitHub token? **Answer: yes** — to resolve a tag/version
+to its real SHA, zizmor queries the GitHub API using `GH_TOKEN`, then compares it
+against your pin. Three audits depend on this:
 
-| Audit | Validates | Online? | Needs token |
+| Audit | Validates | zizmor docs "works offline" | Detects only with a token (our tests) |
 |---|---|:---:|:---:|
-| **`ref-version-mismatch`** | the `# vX.Y.Z` comment matches the pinned SHA | ✅ | ✅ |
-| **`impostor-commit`** | the SHA genuinely belongs to the action's repo (not a fork impostor) | ✅ | ✅ |
-| **`stale-action-refs`** | the SHA points to an actual release tag (`--pedantic`) | ✅ | ✅ |
+| **`ref-version-mismatch`** | the `# vX.Y.Z` comment matches the pinned SHA | ✅ (flag) | ✅ — fired only with `GH_TOKEN` |
+| **`impostor-commit`** | the SHA genuinely belongs to the action's repo (not a fork impostor) | ❌ | ✅ |
+| **`stale-action-refs`** | the SHA points to an actual release tag (`--pedantic`) | ❌ | ✅ |
+
+> Nuance worth flagging: zizmor's docs mark `ref-version-mismatch` as
+> "works offline ✅", but resolving a tag↔SHA mapping needs the GitHub API. In our
+> tests (zizmor 1.25.2) it produced **zero** findings offline or without a token,
+> and detected the mismatch **only** with `GH_TOKEN` set. So the practical
+> requirement is: token = it works; no token = silently no result.
 
 ### Live proof
 
