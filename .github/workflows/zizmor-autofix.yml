@@ -1,0 +1,43 @@
+name: zizmor autofix (prototype)
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "0 6 * * 1"   # weekly, enable after testing
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false # push via explicit token instead (artipacked-clean)
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install zizmor (git main — pre-1.28.0, has `fixes`)
+        run: cargo install --git https://github.com/zizmorcore/zizmor --branch main zizmor --locked
+        # reproducible: swap --branch main for --rev <commit-sha>
+
+      - name: Ensure PR labels exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create safe-fix    --color 0e8a16 --description "zizmor safe autofix"   2>/dev/null || true
+          gh label create needs-review --color d93f0b --description "zizmor unsafe autofix" 2>/dev/null || true
+
+      - name: Scan → manifest
+        run: zizmor --format=json . > manifest.json || true
+
+      - name: Bucket + open PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pip install --quiet pyyaml
+          python3 .github/scripts/zizmor_autofix.py
