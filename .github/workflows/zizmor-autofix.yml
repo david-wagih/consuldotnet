@@ -39,7 +39,7 @@ jobs:
 
       - name: Bucket + open PRs
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.ZIZMOR_PAT }}
           MANIFEST: ${{ runner.temp }}/manifest.json
         run: |
           pip install --quiet pyyaml

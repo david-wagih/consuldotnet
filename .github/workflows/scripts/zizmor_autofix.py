@@ -67,32 +67,35 @@ def pr_body(ident, disp, fs):
 
 # --- one PR per bucket -------------------------------------------------------
 for (ident, disp), fs in buckets.items():
-    branch = f"zizmor-autofix/{ident}" + ("" if disp == "safe" else "-unsafe")
+    try:
+        branch = f"zizmor-autofix/{ident}" + ("" if disp == "safe" else "-unsafe")
+        sh(["git", "checkout", "-f", BASE]); sh(["git", "reset", "--hard"])
+        cfg = scoped_config(ident)
+        sh(["zizmor", "--config", cfg, f"--fix={FIX_MODE[disp]}", "."])
 
-    sh(["git", "checkout", "-f", BASE]); sh(["git", "reset", "--hard"])
-    cfg = scoped_config(ident)
-    sh(["zizmor", "--config", cfg, f"--fix={FIX_MODE[disp]}", "."])   # applies only THIS audit
+        if sh(["git", "diff", "--quiet"]).returncode == 0:
+            print(f"{ident}/{disp}: no changes"); continue
 
-    if sh(["git", "diff", "--quiet"]).returncode == 0:
-        print(f"{ident}/{disp}: no changes"); continue
+        sh(["git", "switch", "-C", branch], check=True)
+        sh(["git", "add", "-A"], check=True)
+        titles = "; ".join(sorted({fx["title"] for f in fs for fx in f["fixes"]
+                                   if fx["disposition"] == disp}))
+        sh(["git", "-c", "user.name=zizmor-autofix",
+            "-c", "user.email=zizmor-autofix@users.noreply.github.com",
+            "commit", "-m", f"zizmor: fix {ident} ({disp})\n\n{titles}"], check=True)
+        sh(["git", "push", f"https://x-access-token:{TOKEN}@github.com/{REPO}.git",
+            f"HEAD:refs/heads/{branch}", "--force"], check=True)
 
-    sh(["git", "switch", "-C", branch], check=True)
-    sh(["git", "add", "-A"], check=True)
-    titles = "; ".join(sorted({fx["title"] for f in fs for fx in f["fixes"]
-                               if fx["disposition"] == disp}))
-    sh(["git", "-c", "user.name=zizmor-autofix",
-        "-c", "user.email=zizmor-autofix@users.noreply.github.com",
-        "commit", "-m", f"zizmor: fix {ident} ({disp})\n\n{titles}"], check=True)
-    sh(["git", "push", f"https://x-access-token:{TOKEN}@github.com/{REPO}.git",
-        f"HEAD:refs/heads/{branch}", "--force"], check=True)
-
-    body  = pr_body(ident, disp, fs)
-    label = "safe-fix" if disp == "safe" else "needs-review"
-    exists = sh(["gh", "pr", "list", "--head", branch, "--json", "number",
-                 "-q", ".[0].number"], capture_output=True, text=True).stdout.strip()
-    if exists:
-        sh(["gh", "pr", "edit", branch, "--body", body])
-    else:
-        sh(["gh", "pr", "create", "--head", branch, "--base", BASE,
-            "--title", f"zizmor: fix {ident} ({disp})", "--body", body, "--label", label])
-    print(f"{ident}/{disp}: PR ready ({branch})")
+        body  = pr_body(ident, disp, fs)
+        label = "safe-fix" if disp == "safe" else "needs-review"
+        exists = sh(["gh", "pr", "list", "--head", branch, "--json", "number",
+                     "-q", ".[0].number"], capture_output=True, text=True).stdout.strip()
+        if exists:
+            sh(["gh", "pr", "edit", branch, "--body", body])
+        else:
+            sh(["gh", "pr", "create", "--head", branch, "--base", BASE,
+                "--title", f"zizmor: fix {ident} ({disp})", "--body", body, "--label", label])
+        print(f"{ident}/{disp}: PR ready ({branch})")
+    except subprocess.CalledProcessError as e:
+        print(f"{ident}/{disp}: FAILED — {e}")
+        continue
