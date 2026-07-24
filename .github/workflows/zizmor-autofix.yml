@@ -18,12 +18,12 @@ jobs:
         with:
           persist-credentials: false # push via explicit token instead (artipacked-clean)
 
-      - name: Cache cargo build
-        uses: Swatinem/rust-cache@v2
-
-      - name: Install zizmor (git main — pre-1.28.0, has `fixes`)
-        run: cargo install --git https://github.com/zizmorcore/zizmor --branch main zizmor --locked
-        # reproducible: swap --branch main for --rev <commit-sha>
+      - name: Install zizmor v1.28.0
+        run: |
+          curl -fsSL https://github.com/zizmorcore/zizmor/releases/download/v1.28.0/zizmor-x86_64-unknown-linux-gnu.tar.gz \
+             | tar -xz
+             sudo mv zizmor /usr/local/bin/zizmor
+             zizmor --version
 
       - name: Ensure PR labels exist
         env:
@@ -40,4 +40,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           pip install --quiet pyyaml
-          python3 .github/scripts/zizmor_autofix.py
+          python3 .github/workflows/scripts/zizmor_autofix.py
