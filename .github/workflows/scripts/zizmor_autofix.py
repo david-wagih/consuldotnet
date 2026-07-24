@@ -15,7 +15,7 @@ def sh(cmd, **kw):
     return subprocess.run(cmd, **kw)
 
 # --- load manifest -----------------------------------------------------------
-manifest = json.load(open("manifest.json"))
+manifest = json.load(open(os.environ.get("MANIFEST", "manifest.json")))
 # candidates: has a fix AND not ignored/suppressed by repo policy
 findings = [f for f in manifest if f.get("fixes") and not f.get("ignored")]
 if not findings:
@@ -67,7 +67,7 @@ def pr_body(ident, disp, fs):
 
 # --- one PR per bucket -------------------------------------------------------
 for (ident, disp), fs in buckets.items():
-    branch = f"zizmor/fix/{ident}" + ("" if disp == "safe" else "-unsafe")
+    branch = f"zizmor-autofix/{ident}" + ("" if disp == "safe" else "-unsafe")
 
     sh(["git", "checkout", "-f", BASE]); sh(["git", "reset", "--hard"])
     cfg = scoped_config(ident)

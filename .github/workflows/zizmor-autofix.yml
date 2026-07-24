@@ -33,11 +33,12 @@ jobs:
           gh label create needs-review --color d93f0b --description "zizmor unsafe autofix" 2>/dev/null || true
 
       - name: Scan → manifest
-        run: zizmor --format=json . > manifest.json || true
+        run: zizmor --format=json . > "$RUNNER_TEMP/manifest.json" || true
 
       - name: Bucket + open PRs
         env:
           GH_TOKEN: ${{ github.token }}
+          MANIFEST: ${{ runner.temp }}/manifest.json
         run: |
           pip install --quiet pyyaml
           python3 .github/workflows/scripts/zizmor_autofix.py
